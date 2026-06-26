@@ -18,7 +18,7 @@ function HistoryPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("http://192.168.1.106:3000/api/sensors/history")
+    fetch("http://104.214.174.52:5000/api/sensors/history")
       .then((r) => r.json())
       .then((data) => {
         const mapped = data.map((row) => ({
@@ -233,12 +233,16 @@ export default function TerrariumDashboard() {
     humidity: 0,
     light: 0,
     soil: 0,
+    water: 0,
+    pump: 0,
   });
   const [tempHistory, setTempHistory] = useState([]);
   const [humidityHistory, setHumidityHistory] = useState([]);
 
   useEffect(() => {
-    const es = new EventSource("http://192.168.1.106:3000/api/sensors/stream");
+    const es = new EventSource(
+      "http://104.214.174.52:5000/api/sensors/stream"
+    );
 
     es.addEventListener("reading", (e) => {
       const data = JSON.parse(e.data);
@@ -248,6 +252,8 @@ export default function TerrariumDashboard() {
         humidity: Number(data.humidity ?? 0),
         light: Number(data.light ?? 0),
         soil: Number(data.soil ?? 0),
+        water: Number(data.water ?? 0),
+        pump: Number(data.pump ?? 0),
       });
 
       setLastUpdated(new Date().toLocaleTimeString());
