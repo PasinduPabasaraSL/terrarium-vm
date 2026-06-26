@@ -208,44 +208,6 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
         </div>
       </div>
 
-      {/* Charts */}
-      {/* <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <div className="bg-white rounded-2xl p-4 md:p-6 shadow">
-          <h3 className="font-medium mb-4">Temperature Trends</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={tempHistory.filter((_, i) => i % 1800 === 0)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10 }}
-                tickFormatter={(t) => t.split(":").slice(0, 2).join(":") + " " + t.split(" ")[1]}
-              />
-              <YAxis tick={{ fontSize: 10 }} width={32} />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#ff6b6b" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="bg-white rounded-2xl p-4 md:p-6 shadow">
-          <h3 className="font-medium mb-4">Humidity Trends</h3>
-          <ResponsiveContainer width="100%" height={250}>
-            <LineChart data={humidityHistory.filter((_, i) => i % 1800 === 0)}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis
-                dataKey="time"
-                tick={{ fontSize: 10 }}
-                tickFormatter={(t) => t.split(":").slice(0, 2).join(":") + " " + t.split(" ")[1]}
-              />
-              <YAxis tick={{ fontSize: 10 }} width={32} />
-              <Tooltip />
-              <Line type="monotone" dataKey="value" stroke="#4dabf7" strokeWidth={2} dot={false} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      </div> */}
-
-      {/* Footer */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 text-sm">
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
           System Status
@@ -254,10 +216,6 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
           Active Sensors
           <div className="font-medium">4 / 4</div>
-        </div>
-        <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          Last Updated
-          <div className="opacity-80">{lastUpdated}</div>
         </div>
       </div>
     </div>
