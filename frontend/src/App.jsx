@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Thermometer, Droplets, Sun, Leaf, Menu, X } from "lucide-react";
+import { Thermometer, Droplets, Sun, Leaf, Menu, X, Power } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -141,38 +141,44 @@ function HistoryPage() {
 
 // ---------- Dashboard Page ----------
 function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }) {
+  const [lightOn, setLightOn] = useState(false);
+  const [pumpOn, setPumpOn] = useState(false);
+
+  const toggleLight = () => setLightOn(!lightOn);
+  const togglePump = () => setPumpOn(!pumpOn);
+
   return (
     <div className="space-y-6 md:space-y-8">
       {/* Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-500">
             <span>Temperature</span>
-            <Thermometer size={18} />
+            <Thermometer size={18} className="text-red-400" />
           </div>
-          <div className="text-xl md:text-2xl font-semibold">
+          <div className="text-xl md:text-2xl font-semibold text-gray-800">
             {sensorData.temperature.toFixed(1)} °C
           </div>
           <p className="text-xs md:text-sm text-green-600 mt-1">Healthy</p>
         </div>
 
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-500">
             <span>Humidity</span>
-            <Droplets size={18} />
+            <Droplets size={18} className="text-blue-400" />
           </div>
-          <div className="text-xl md:text-2xl font-semibold">
+          <div className="text-xl md:text-2xl font-semibold text-gray-800">
             {sensorData.humidity.toFixed(1)} %
           </div>
           <p className="text-xs md:text-sm text-green-600 mt-1">Healthy</p>
         </div>
 
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-500">
             <span>Light Level</span>
-            <Sun size={18} />
+            <Sun size={18} className="text-yellow-500" />
           </div>
-          <div className="text-xl md:text-2xl font-semibold">
+          <div className="text-xl md:text-2xl font-semibold text-gray-800">
             {sensorData.light.toFixed(1)} lux
           </div>
           <p className="text-xs md:text-sm text-yellow-600 mt-1">
@@ -181,33 +187,89 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
         </div>
 
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-500">
             <span>Soil Moisture</span>
-            <Leaf size={18} />
+            <Leaf size={18} className="text-green-500" />
           </div>
-          <div className="text-xl md:text-2xl font-semibold">{sensorData.soil}%</div>
+          <div className="text-xl md:text-2xl font-semibold text-gray-800">{sensorData.soil}</div>
           <p className="text-xs md:text-sm text-green-600 mt-1">
             {sensorData.soil < 20 ? "Dry" : "Healthy"}
           </p>
         </div>
+
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
-          <div className="flex items-center justify-between mb-2 text-sm">
+          <div className="flex items-center justify-between mb-2 text-sm text-gray-500">
             <span>Water Level</span>
-            <Leaf size={18} />
+            <Droplets size={18} className="text-teal-500" />
           </div>
-          <div className="text-xl md:text-2xl font-semibold">
+          <div className="text-xl md:text-2xl font-semibold text-gray-800">
             {sensorData.water === 1 ? "Available" : "Empty"}
           </div>
-            <p
-              className={`text-xs md:text-sm mt-1 ${
-                sensorData.water === 1 ? "text-green-600" : "text-red-600"
-              }`}
-            >
-              {sensorData.water === 1 ? "Water Detected" : "No Water"}
-            </p>
+          <p
+            className={`text-xs md:text-sm mt-1 ${
+              sensorData.water === 1 ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {sensorData.water === 1 ? "Water Detected" : "No Water"}
+          </p>
         </div>
       </div>
 
+      {/* Hardware System Overrides (Professional Cards Layout) */}
+      <div className="space-y-3">
+        <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-500">System Controls</h3>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+          
+          {/* Professional Light Control Card */}
+          <button
+            onClick={toggleLight}
+            className={`flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
+              lightOn 
+                ? "bg-amber-50/50 border-amber-200" 
+                : "bg-white border-gray-100 hover:bg-gray-50/70"
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-3">
+              <span className={`p-2 rounded-xl ${lightOn ? 'bg-amber-100 text-amber-600' : 'bg-gray-100 text-gray-400'}`}>
+                <Sun size={20} />
+              </span>
+              <span className={`text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                lightOn ? "bg-amber-200 text-amber-800" : "bg-gray-100 text-gray-500"
+              }`}>
+                {lightOn ? "On" : "Off"}
+              </span>
+            </div>
+            <span className="text-sm font-medium text-gray-700">Light System</span>
+            <span className="text-xs text-gray-400 mt-0.5">Manual Toggle</span>
+          </button>
+
+          {/* Professional Pump Control Card */}
+          <button
+            onClick={togglePump}
+            className={`flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
+              pumpOn 
+                ? "bg-blue-50/50 border-blue-200" 
+                : "bg-white border-gray-100 hover:bg-gray-50/70"
+            }`}
+          >
+            <div className="flex items-center justify-between w-full mb-3">
+              <span className={`p-2 rounded-xl ${pumpOn ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                <Droplets size={20} />
+              </span>
+              <span className={`text-[10px] md:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                pumpOn ? "bg-blue-200 text-blue-800" : "bg-gray-100 text-gray-500"
+              }`}>
+                {pumpOn ? "Active" : "Idle"}
+              </span>
+            </div>
+            <span className="text-sm font-medium text-gray-700">Water Pump</span>
+            <span className="text-xs text-gray-400 mt-0.5">Manual Override</span>
+          </button>
+
+        </div>
+      </div>
+
+      {/* Bottom Info Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-6 text-sm">
         <div className="bg-white rounded-2xl p-4 md:p-5 shadow">
           System Status
