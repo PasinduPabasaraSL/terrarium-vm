@@ -144,8 +144,74 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
   const [lightOn, setLightOn] = useState(false);
   const [pumpOn, setPumpOn] = useState(false);
 
-  const toggleLight = () => setLightOn(!lightOn);
-  const togglePump = () => setPumpOn(!pumpOn);
+  // must add this
+  // useEffect(() => {   
+  //   fetch(`${API}/api/control`)
+  //     .then((res) => res.json())
+  //     .then((data) => {
+  //       setLightOn(data.light);
+  //       setPumpOn(data.pump);
+  //     })
+  //     .catch((err) => console.error("Error fetching control data:", err));
+  // }, []);
+
+
+  const API = "http://104.214.174.52:5000";
+
+
+  const toggleLight = async () => {
+
+    const newState = !lightOn;
+    setLightOn(newState);
+
+    try {
+      await fetch(`${API}/api/control/light`, {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          state:newState
+        })
+      });
+      console.log(
+        "Light command sent:",
+        newState
+      );
+    } catch(error){
+      console.error(
+        "Light control error",
+        error
+      );
+    }
+  };
+
+
+  const togglePump = async () => {
+    const newState = !pumpOn;
+    setPumpOn(newState);
+
+    try {
+      await fetch(`${API}/api/control/pump`, {
+        method:"POST",
+        headers:{
+          "Content-Type":"application/json"
+        },
+        body:JSON.stringify({
+          state:newState
+        })
+      });
+      console.log(
+        "Pump command sent:",
+        newState
+      );
+    }catch(error){
+      console.error(
+        "Pump control error",
+        error
+      );
+    }
+  };
 
   return (
     <div className="space-y-6 md:space-y-8">
@@ -215,7 +281,8 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
         </div>
       </div>
 
-      {/* Hardware System Overrides (Professional Cards Layout) */}
+
+      {/* Manual Controllers */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-500">System Controls</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
@@ -223,7 +290,7 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
           {/* Professional Light Control Card */}
           <button
             onClick={toggleLight}
-            className={`flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
+            className={`cursor-pointer flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
               lightOn 
                 ? "bg-amber-50/50 border-amber-200" 
                 : "bg-white border-gray-100 hover:bg-gray-50/70"
@@ -246,7 +313,7 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
           {/* Professional Pump Control Card */}
           <button
             onClick={togglePump}
-            className={`flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
+            className={`cursor-pointer flex flex-col text-left p-4 md:p-5 rounded-2xl shadow transition-all duration-200 border active:scale-[0.98] focus:outline-none ${
               pumpOn 
                 ? "bg-blue-50/50 border-blue-200" 
                 : "bg-white border-gray-100 hover:bg-gray-50/70"
@@ -380,7 +447,7 @@ export default function TerrariumDashboard() {
           </button>
         </div>
 
-        <nav className="space-y-4 text-sm">
+        <nav className="space-y-4 text-sm cursor-pointer">
           <div
             className={`cursor-pointer ${activePage === "dashboard" ? "font-medium" : "opacity-80"}`}
             onClick={() => navigate("dashboard")}
