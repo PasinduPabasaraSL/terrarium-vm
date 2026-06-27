@@ -32,6 +32,7 @@ async function initDB() {
       timestamp TIMESTAMP
     );
   `);
+  
   console.log("Database table ready");
 }
 
@@ -41,19 +42,18 @@ initDB();
 
 let latestReading = null;
 const sseClients = new Set();
+const historyClients = new Set();
 const devices = {};
 
-// Time & Sampling constants
 const SIX_HOURS = 6 * 60 * 60 * 1000;
 const REQUIRED_SAMPLES = 10;
 const SAMPLE_DELAY = 30 * 1000;
 
-
-// ===================== DEVICE CONTROL =====================
+// ===================== CONTROL =====================
 
 let controlState = {
   light: false,
-  pump: false 
+  pump: false
 };
 
 // ===================== SSE =====================
@@ -66,16 +66,15 @@ function sseSend(res, event, data) {
 // ===================== ROUTES =====================
 
 app.get("/", (req, res) => {
-  res.send("IoT Backend is running");
+  res.send("IoT Backend running");
 });
 
-// ===================== STREAM =====================
+// ===================== SENSOR STREAM =====================
 
 app.get("/api/sensors/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
 
   if (latestReading) {
     sseSend(res, "reading", latestReading);
@@ -88,50 +87,79 @@ app.get("/api/sensors/stream", (req, res) => {
   });
 });
 
-// ===================== DATABASE INSERT =====================
+// ===================== HISTORY STREAM =====================
+
+app.get("/api/history/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+
+  historyClients.add(res);
+
+  req.on("close", () => {
+    historyClients.delete(res);
+  });
+});
+
+// ===================== DATABASE SAVE =====================
 
 async function storeToDB(deviceName, data) {
   try {
-    await pool.query(`
-      INSERT INTO sensor_readings (
-        device_name, temperature, humidity, light, soil, water, pump, kind, timestamp
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-    `, [
-      deviceName,
-      data.temperature,
-      data.humidity,
-      data.light,
-      data.soil,
-      data.water,
-      data.pump,
-      "sample",
-      new Date()
-    ]);
+    await pool.query(
+      `INSERT INTO sensor_readings 
+        (device_name, temperature, humidity, light, soil, water, pump, kind, timestamp) 
+       VALUES 
+        ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+      [
+        deviceName,
+        data.temperature,
+        data.humidity,
+        data.light,
+        data.soil,
+        data.water,
+        data.pump,
+        "sample",
+        new Date()
+      ]
+    );
+
+    // Get latest saved row
+    const result = await pool.query(
+      `SELECT * FROM sensor_readings ORDER BY timestamp DESC LIMIT 1`
+    );
+
+    // Send history update
+    for (const client of historyClients) {
+      sseSend(client, "history", result.rows[0]);
+    }
 
     console.log("Saved to PostgreSQL");
+
   } catch (err) {
-    console.log("DB Error:", err.message);
+    console.log("DB error", err.message);
   }
 }
 
-// ===================== 6 HOUR SAMPLING =====================
+// ===================== SAMPLING =====================
 
 function startSampling(deviceName) {
-  console.log("Starting 10 sample collection");
+  console.log("Starting 10 samples");
   let count = 0;
 
   const interval = setInterval(async () => {
     const current = devices[deviceName]?.status;
+
     if (!current) return;
 
-    await storeToDB(deviceName, { ...current });
+    await storeToDB(deviceName, current);
     count++;
+    
     console.log(`Saved sample ${count}/10`);
 
     if (count >= REQUIRED_SAMPLES) {
       clearInterval(interval);
       devices[deviceName].lastBatch = Date.now();
-      console.log("10 samples completed");
+      console.log("Batch completed");
     }
   }, SAMPLE_DELAY);
 }
@@ -145,15 +173,14 @@ function checkSampling(deviceName) {
   }
 
   const now = Date.now();
-  const last = devices[deviceName].lastBatch;
 
-  if (now - last >= SIX_HOURS) {
+  if (now - devices[deviceName].lastBatch >= SIX_HOURS) {
     devices[deviceName].lastBatch = now;
     startSampling(deviceName);
   }
 }
 
-// ===================== SENSOR RECEIVE =====================
+// ===================== RECEIVE ESP32 =====================
 
 app.post("/api/sensors", (req, res) => {
   const data = {
@@ -167,10 +194,8 @@ app.post("/api/sensors", (req, res) => {
   };
 
   const deviceName = req.body.deviceName || "terrarium-1";
-  console.log("Received:", data);
   latestReading = data;
 
-  // Realtime frontend dispatch
   for (const client of sseClients) {
     sseSend(client, "reading", data);
   }
@@ -183,89 +208,40 @@ app.post("/api/sensors", (req, res) => {
   }
 
   devices[deviceName].status = data;
-
-  // Check 6 hour timer
   checkSampling(deviceName);
 
   res.json({ status: "ok" });
 });
 
+// ===================== CONTROL =====================
 
-// ===================== LIGHT CONTROL =====================
-
-app.post("/api/control/light", (req,res)=>{
-
-  const state =
-    req.body.state === true ||
-    req.body.state === 1 ||
-    req.body.state === "1";
-
-  controlState.light = state;
-
-  console.log(
-    "Light command:",
-    state ? "ON" : "OFF"
-  );
-
-  res.json({
-    status:"ok",
-    light:controlState.light
-  });
-
-});
-
-// ===================== PUMP CONTROL =====================
-
-app.post("/api/control/pump", (req,res)=>{
-
-  const state =
-    req.body.state === true ||
-    req.body.state === 1 ||
-    req.body.state === "1";
-
-  controlState.pump = state;
-
-  console.log(
-    "Pump command:",
-    state ? "ON" : "OFF"
-  );
-
-  res.json({
-    status:"ok",
-    pump:controlState.pump
-  });
-
-});
-
-
-// ===================== GET CONTROL STATUS (ESP32) =====================
-
-app.get("/api/control", (req,res)=>{
+app.post("/api/control/light", (req, res) => {
+  controlState.light = req.body.state === true || req.body.state === 1 || req.body.state === "1";
   res.json(controlState);
 });
 
-// ===================== HISTORY =====================
-
-app.get("/api/sensors/history", async (req, res) => {
-  try {
-    const result = await pool.query(`
-      SELECT * FROM sensor_readings ORDER BY timestamp DESC
-    `);
-    res.json(result.rows);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Internal server error" });
-  }
+app.post("/api/control/pump", (req, res) => {
+  controlState.pump = req.body.state === true || req.body.state === 1 || req.body.state === "1";
+  res.json(controlState);
 });
 
-// ===================== HEALTH =====================
+app.get("/api/control", (req, res) => {
+  res.json(controlState);
+});
+
+// ===================== HISTORY API =====================
+
+app.get("/api/sensors/history", async (req, res) => {
+  const result = await pool.query(
+    `SELECT * FROM sensor_readings ORDER BY timestamp DESC`
+  );
+  res.json(result.rows);
+});
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
 });
 
-// ===================== START =====================
-
 app.listen(3000, "0.0.0.0", () => {
-  console.log("Backend running on port 3000");
+  console.log("Backend running on 3000");
 });

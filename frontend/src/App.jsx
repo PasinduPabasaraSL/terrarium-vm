@@ -16,125 +16,147 @@ function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    setLoading(true);
-    fetch("http://104.214.174.52:5000/api/sensors/history")
-      .then((r) => r.json())
-      .then((data) => {
-        const mapped = data.map((row) => ({
-          time: new Date(row.timestamp).toLocaleTimeString([], {
+  const loadHistory = () => {
+    fetch("http://104.214.187.108:5000/api/sensors/history")
+      .then(res => res.json())
+      .then(data => {
+        const mapped = data.reverse().map(row => ({
+          time: new Date(row.timestamp).toLocaleString([], {
+            month: "short",
+            day: "numeric",
             hour: "2-digit",
-            minute: "2-digit",
+            minute: "2-digit"
           }),
           date: new Date(row.timestamp).toLocaleDateString(),
           temperature: Number(row.temperature ?? 0),
           humidity: Number(row.humidity ?? 0),
+          light: Number(row.light ?? 0),
           soil: Number(row.soil ?? 0),
+          water: Number(row.water ?? 0),
+          pump: row.pump ? 1 : 0
         }));
+
         setHistory(mapped);
         setLoading(false);
       })
-      .catch((err) => {
-        setError("Failed to load history.");
+      .catch(() => {
+        setError("Failed to load history");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    // Initial database load
+    loadHistory();
+
+    // Listen for new sensor updates
+    const es = new EventSource("http://104.214.187.108:5000/api/sensors/stream");
+
+    es.addEventListener("reading", () => {
+      // Refresh db history
+      loadHistory();
+    });
+
+    return () => {
+      es.close();
+    };
   }, []);
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64 text-gray-400">
-        Loading history...
-      </div>
-    );
+    return <div className="text-gray-400">Loading history...</div>;
   }
 
   if (error) {
-    return (
-      <div className="flex items-center justify-center h-64 text-red-400">
-        {error}
-      </div>
-    );
+    return <div className="text-red-500">{error}</div>;
   }
 
   return (
     <div className="space-y-6">
-      {/* Temperature History */}
-      <div className="bg-white rounded-2xl p-4 md:p-6 shadow">
-        <h3 className="font-medium mb-4 flex items-center gap-2">
-          <Thermometer size={18} className="text-red-400" />
-          Temperature History
-        </h3>
+      
+      {/* Temperature */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Temperature History</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} width={32} unit="°C" />
-            <Tooltip formatter={(v) => [`${v} °C`, "Temperature"]} />
-            <Line type="monotone" dataKey="temperature" stroke="#ff6b6b" strokeWidth={2} dot={false} />
+            <XAxis dataKey="time" />
+            <YAxis unit="°C" />
+            <Tooltip />
+            <Line dataKey="temperature" stroke="#ff6b6b" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Humidity History */}
-      <div className="bg-white rounded-2xl p-4 md:p-6 shadow">
-        <h3 className="font-medium mb-4 flex items-center gap-2">
-          <Droplets size={18} className="text-blue-400" />
-          Humidity History
-        </h3>
+      {/* Humidity */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Humidity History</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} width={32} unit="%" />
-            <Tooltip formatter={(v) => [`${v} %`, "Humidity"]} />
-            <Line type="monotone" dataKey="humidity" stroke="#4dabf7" strokeWidth={2} dot={false} />
+            <XAxis dataKey="time" />
+            <YAxis unit="%" />
+            <Tooltip />
+            <Line dataKey="humidity" stroke="#4dabf7" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Soil Moisture History */}
-      <div className="bg-white rounded-2xl p-4 md:p-6 shadow">
-        <h3 className="font-medium mb-4 flex items-center gap-2">
-          <Leaf size={18} className="text-green-500" />
-          Soil Moisture History
-        </h3>
+      {/* Light Sensor */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Light Sensor History (Lux)</h3>
         <ResponsiveContainer width="100%" height={250}>
           <LineChart data={history}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" tick={{ fontSize: 10 }} />
-            <YAxis tick={{ fontSize: 10 }} width={32} unit="%" />
-            <Tooltip formatter={(v) => [`${v} %`, "Soil Moisture"]} />
-            <Line type="monotone" dataKey="soil" stroke="#51cf66" strokeWidth={2} dot={false} />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="light" stroke="#f59f00" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* Raw Table */}
-      <div className="bg-white rounded-2xl p-4 md:p-6 shadow overflow-x-auto">
-        <h3 className="font-medium mb-4">All Readings</h3>
-        <table className="w-full text-sm text-left">
-          <thead>
-            <tr className="border-b text-gray-500">
-              <th className="pb-2 pr-4 font-medium">Date</th>
-              <th className="pb-2 pr-4 font-medium">Time</th>
-              <th className="pb-2 pr-4 font-medium">Temp (°C)</th>
-              <th className="pb-2 pr-4 font-medium">Humidity (%)</th>
-              <th className="pb-2 font-medium">Soil (%)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {history.slice().reverse().map((row, i) => (
-              <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
-                <td className="py-2 pr-4 text-gray-500">{row.date}</td>
-                <td className="py-2 pr-4">{row.time}</td>
-                <td className="py-2 pr-4 text-red-500">{row.temperature.toFixed(1)}</td>
-                <td className="py-2 pr-4 text-blue-500">{row.humidity.toFixed(1)}</td>
-                <td className="py-2 text-green-600">{row.soil}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {/* Soil */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Soil Moisture History</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={history}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="soil" stroke="#51cf66" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
       </div>
+
+      {/* Water */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Water Level History</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={history}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="water" stroke="#0ea5e9" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Pump */}
+      <div className="bg-white rounded-2xl p-6 shadow">
+        <h3 className="font-medium mb-4">Pump Activity</h3>
+        <ResponsiveContainer width="100%" height={250}>
+          <LineChart data={history}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="time" />
+            <YAxis />
+            <Tooltip />
+            <Line dataKey="pump" stroke="#2563eb" strokeWidth={2} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
     </div>
   );
 }
@@ -156,7 +178,7 @@ function DashboardPage({ sensorData, tempHistory, humidityHistory, lastUpdated }
   // }, []);
 
 
-  const API = "http://104.214.174.52:5000";
+  const API = "http://104.214.187.108:5000";
 
 
   const toggleLight = async () => {
@@ -370,7 +392,7 @@ export default function TerrariumDashboard() {
 
   useEffect(() => {
     const es = new EventSource(
-      "http://104.214.174.52:5000/api/sensors/stream"
+      "http://104.214.187.108:5000/api/sensors/stream"
     );
 
     es.addEventListener("reading", (e) => {
